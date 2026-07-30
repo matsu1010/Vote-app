@@ -1,0 +1,276 @@
+/* Vote App Styles */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.App-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.App-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.App-header p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin-bottom: 1rem;
+}
+
+/* Status indicator */
+.status {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.2);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.status.connected {
+  background-color: rgba(76, 175, 80, 0.3);
+  color: #fff;
+}
+
+.status.disconnected {
+  background-color: rgba(244, 67, 54, 0.3);
+  color: #fff;
+}
+
+.status.checking {
+  background-color: rgba(255, 193, 7, 0.3);
+  color: #fff;
+}
+
+/* Main content */
+.App-main {
+  flex: 1;
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  width: 100%;
+}
+
+/* Privacy notice */
+.privacy-notice {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #667eea;
+}
+
+.privacy-notice h2 {
+  margin-bottom: 1rem;
+  color: #667eea;
+}
+
+.privacy-notice p {
+  line-height: 1.6;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.privacy-notice .important {
+  background-color: #fff3cd;
+  padding: 1rem;
+  border-radius: 4px;
+  border-left: 4px solid #ffc107;
+  color: #856404;
+  margin-top: 1rem;
+}
+
+/* Questions section */
+.questions-section {
+  background: white;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.questions-section h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.questions-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.question-card {
+  padding: 1.5rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.question-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-color: #667eea;
+}
+
+.question-card.open {
+  border-left: 4px solid #4caf50;
+  background-color: #f0f8f0;
+}
+
+.question-card.closed {
+  border-left: 4px solid #ff9800;
+  background-color: #fff8f0;
+}
+
+.question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.question-header h3 {
+  color: #333;
+  margin: 0;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-badge.open {
+  background-color: #c8e6c9;
+  color: #2e7d32;
+}
+
+.status-badge.closed {
+  background-color: #ffe0b2;
+  color: #e65100;
+}
+
+.question-card .description {
+  color: #666;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* Voting section */
+.voting-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+  background-color: rgba(76, 175, 80, 0.05);
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.voting-info {
+  color: #2e7d32;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Results section */
+.results-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e0e0;
+  background-color: rgba(255, 152, 0, 0.05);
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.results-available {
+  color: #e65100;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+/* Results hidden message */
+.results-hidden {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: rgba(102, 126, 234, 0.1);
+  border-radius: 4px;
+  border-left: 3px solid #667eea;
+}
+
+.results-hidden p {
+  color: #667eea;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Footer */
+.App-footer {
+  background-color: #f9f9f9;
+  border-top: 1px solid #e0e0e0;
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+  margin-top: auto;
+}
+
+.App-footer a {
+  color: #667eea;
+  text-decoration: none;
+}
+
+.App-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .App-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .App-main {
+    margin: 1rem auto;
+  }
+
+  .privacy-notice,
+  .questions-section {
+    padding: 1.5rem;
+  }
+
+  .question-header {
+    flex-direction: column;
+  }
+
+  .status-badge {
+    align-self: flex-start;
+  }
+}
