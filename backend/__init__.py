@@ -1,6 +1,4 @@
-# Local-first voting app backend
+from backend.database import engine, Base
+from backend.models import User, Question, Vote, VoteAuditLog
 
-from pathlib import Path
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-print(f"Backend package initialized for repo: {BASE_DIR.name}")
+Base.metadata.create_all(bind=engine)

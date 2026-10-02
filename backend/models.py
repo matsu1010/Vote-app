@@ -1,81 +1,27 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, Index, func
-from sqlalchemy.dialects.sqlite import JSON
-from sqlalchemy.orm import relationship
-from datetime import datetime
-import uuid
-
-from backend.database import Base
+from pydantic import BaseModel, Field
+from typing import Optional
 
 
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    username = Column(String(255), unique=True, nullable=False)
-    email_hash = Column(String(255), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    votes = relationship("Vote", back_populates="user", cascade="all, delete-orphan")
-    audit_logs = relationship("VoteAuditLog", back_populates="user", cascade="all, delete-orphan")
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=2, max_length=255)
+    email_hash: str = Field(..., min_length=3, max_length=255)
+    password_hash: str = Field(..., min_length=6, max_length=255)
+    role: Optional[str] = "user"
 
 
-class Question(Base):
-    __tablename__ = "questions"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    title = Column(String(500), nullable=False)
-    description = Column(String(2000), nullable=True)
-    status = Column(String(20), default="open")  # 'open' or 'closed'
-    created_at = Column(DateTime, default=datetime.utcnow)
-    expires_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    votes = relationship("Vote", back_populates="question", cascade="all, delete-orphan")
+class QuestionCreate(BaseModel):
+    title: str = Field(..., min_length=3, max_length=500)
+    description: Optional[str] = None
 
 
-class Vote(Base):
-    __tablename__ = "votes"
-
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    question_id = Column(String(36), ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
-    answer = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    user = relationship("User", back_populates="votes")
-    question = relationship("Question", back_populates="votes")
-    audit_logs = relationship("VoteAuditLog", back_populates="vote", cascade="all, delete-orphan")
-
-    __table_args__ = (
-        Index("idx_user_id", "user_id"),
-        Index("idx_question_id", "question_id"),
-        Index("idx_created_at", "created_at"),
-        Index("idx_votes_user_created", "user_id", "created_at"),
-        Index("idx_votes_question_created", "question_id", "created_at"),
-    )
+class VoteCreate(BaseModel):
+    question_id: str = Field(..., min_length=1)
+    answer: str = Field(..., min_length=1, max_length=255)
 
 
-class VoteAuditLog(Base):
-    __tablename__ = "vote_audit_log"
+class QuestionStatusUpdate(BaseModel):
+    status: str
 
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    vote_id = Column(String(36), ForeignKey("votes.id", ondelete="CASCADE"), nullable=False)
-    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    action = Column(String(50), nullable=False)  # 'created', 'updated', 'deleted'
-    old_value = Column(String(255), nullable=True)
-    new_value = Column(String(255), nullable=True)
-    reason = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
 
-    vote = relationship("Vote", back_populates="audit_logs")
-    user = relationship("User", back_populates="audit_logs")
-
-    __table_args__ = (
-        Index("idx_user_id", "user_id"),
-        Index("idx_vote_id", "vote_id"),
-        Index("idx_created_at", "created_at"),
-        Index("idx_audit_user_created", "user_id", "created_at"),
-    )
+class ResultsVisibilityUpdate(BaseModel):
+    visibility: str = Field(..., pattern="^(private|admin_and_executive|public)$")
