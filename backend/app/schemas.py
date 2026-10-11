@@ -4,7 +4,6 @@ from datetime import datetime
 from uuid import UUID
 
 
-# User Schemas
 class UserBase(BaseModel):
     username: str
 
@@ -34,7 +33,6 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
-# Question Schemas
 class QuestionBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -66,7 +64,6 @@ class QuestionResponse(QuestionBase):
         from_attributes = True
 
 
-# Vote Schemas
 class VoteCreate(BaseModel):
     answer: str
 
@@ -86,7 +83,6 @@ class VoteResponse(BaseModel):
         from_attributes = True
 
 
-# Admin recipient schemas
 class AdminRecipientCreate(BaseModel):
     admin_id: UUID
     delivery_mode: str = "summary"
@@ -105,7 +101,6 @@ class AdminRecipientResponse(BaseModel):
         from_attributes = True
 
 
-# Results Schema
 class VoteCount(BaseModel):
     answer: str
     count: int

@@ -20,15 +20,6 @@ def add_question_recipient(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_super_admin_user)
 ):
-    """
-    Add an admin as a recipient for a question's result summary.
-    Example payload:
-    {
-      "admin_id": "uuid-here",
-      "delivery_mode": "summary",
-      "destination_url": "https://example.com/webhook"
-    }
-    """
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
@@ -83,7 +74,6 @@ def list_question_recipients(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """List admins assigned to receive a question's result summary."""
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
@@ -105,7 +95,6 @@ def remove_question_recipient(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_super_admin_user)
 ):
-    """Remove an admin recipient from a question."""
     recipient = db.query(AdminRecipient).filter(
         AdminRecipient.question_id == question_id,
         AdminRecipient.admin_id == admin_id
@@ -137,7 +126,6 @@ def make_user_admin(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_super_admin_user)
 ):
-    """Promote user to admin (super admin only)."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -163,7 +151,6 @@ def close_question(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Close a question (admin only)."""
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")

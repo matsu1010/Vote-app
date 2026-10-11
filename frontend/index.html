@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vote App</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .panel {
+      width: 480px;
+      background: white;
+      padding: 28px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      text-align: center;
+    }
+    h1 {
+      margin-top: 0;
+      margin-bottom: 18px;
+    }
+    .link-btn {
+      display: block;
+      width: 100%;
+      margin-bottom: 12px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      background: #1c7cd6;
+      color: white;
+      text-decoration: none;
+      box-sizing: border-box;
+      font-weight: 600;
+    }
+    .link-btn.secondary {
+      background: #2d6a4f;
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <h1>Vote App</h1>
+    <a class="link-btn" href="./login.html">Admin Login</a>
+    <a class="link-btn secondary" href="./admin.html">Admin Page</a>
+    <a class="link-btn" href="./voter.html">Voter Page</a>
+  </div>
+</body>
+</html>

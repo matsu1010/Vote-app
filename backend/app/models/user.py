@@ -18,7 +18,6 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationships
     votes = relationship("Vote", back_populates="user")
     audit_logs = relationship("AuditLog", back_populates="user")
     admin_actions = relationship("AdminActionLog", back_populates="admin_user")

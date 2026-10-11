@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    container_name: vote_app_db
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: vote_app_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: vote_app_backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://user:password@db:5432/vote_app_db
+      SECRET_KEY: change-me-to-a-strong-random-secret
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8000
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+
+  webhook:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.webhook
+    container_name: vote_app_webhook
+    restart: always
+    ports:
+      - "9000:9000"
+
+volumes:
+  postgres_data:

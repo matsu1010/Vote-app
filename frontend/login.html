@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vote App Login</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .login-box {
+      width: 420px;
+      background: white;
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+    input, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+    input {
+      border: 1px solid #d8dee7;
+    }
+    button {
+      border: none;
+      background: #1c7cd6;
+      color: white;
+      cursor: pointer;
+    }
+    .status {
+      min-height: 24px;
+      font-size: 14px;
+      color: #2d6a4f;
+    }
+    .status.error {
+      color: #a61818;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h2>Vote App Admin Login</h2>
+    <input id="username" type="text" placeholder="Username" />
+    <input id="password" type="password" placeholder="Password" />
+    <button id="loginBtn">Login</button>
+    <div id="status" class="status"></div>
+  </div>
+
+  <script>
+    function setStatus(message, isError = false) {
+      const el = document.getElementById("status");
+      el.textContent = message;
+      el.classList.toggle("error", isError);
+    }
+
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!username || !password) {
+        setStatus("Username and password are required", true);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || "Login failed");
+        }
+
+        localStorage.setItem("vote_app_token", data.access_token);
+        setStatus("Login successful. Redirecting...");
+        window.location.href = "/frontend/admin.html";
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    });
+  </script>
+</body>
+</html>

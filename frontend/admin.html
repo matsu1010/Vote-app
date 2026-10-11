@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vote App Admin</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 32px;
+      background: #f4f6f8;
+      color: #1e2a39;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    input, select, button, textarea {
+      width: 100%;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      border: 1px solid #d8dee7;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    button {
+      background: #1c7cd6;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button.danger {
+      background: #d64545;
+    }
+    .status {
+      min-height: 24px;
+      margin-top: 12px;
+      font-size: 14px;
+    }
+    .status.error {
+      color: #a61818;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid #e8edf3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Vote App Admin</h1>
+
+    <section>
+      <h2>Create Question</h2>
+      <label for="questionTitle">Question title</label>
+      <input id="questionTitle" type="text" placeholder="Example: Do you prefer option A?" />
+
+      <label for="questionDescription">Description</label>
+      <textarea id="questionDescription" placeholder="Optional description"></textarea>
+
+      <button id="createQuestionBtn">Create question</button>
+      <div id="createStatus" class="status"></div>
+    </section>
+
+    <hr />
+
+    <div class="grid">
+      <div>
+        <h2>Assign recipient</h2>
+        <label for="questionId">Question ID</label>
+        <input id="questionId" type="text" placeholder="Question UUID" />
+
+        <label for="adminId">Admin User ID</label>
+        <input id="adminId" type="text" placeholder="Admin UUID" required />
+
+        <label for="deliveryMode">Delivery mode</label>
+        <select id="deliveryMode">
+          <option value="summary">summary</option>
+          <option value="full">full</option>
+          <option value="none">none</option>
+        </select>
+
+        <label for="destinationUrl">Destination URL</label>
+        <input id="destinationUrl" type="url" placeholder="https://your-admin-endpoint.example.com/webhook" />
+
+        <button id="assignRecipientBtn">Assign recipient</button>
+      </div>
+
+      <div>
+        <h2>Current recipients</h2>
+        <button id="loadRecipientsBtn">Load recipients</button>
+        <table>
+          <thead>
+            <tr>
+              <th>Admin ID</th>
+              <th>Mode</th>
+              <th>Destination</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="recipientTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script>
+    const token = localStorage.getItem("vote_app_token");
+
+    function setStatus(message, isError = false) {
+      const statusEl = document.getElementById("status");
+      statusEl.textContent = message;
+      statusEl.classList.toggle("error", isError);
+    }
+
+    function setCreateStatus(message, isError = false) {
+      const statusEl = document.getElementById("createStatus");
+      statusEl.textContent = message;
+      statusEl.classList.toggle("error", isError);
+    }
+
+    async function apiFetch(url, options = {}) {
+      const headers = {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch(url, {
+        ...options,
+        headers
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "Request failed");
+      }
+
+      return response.json();
+    }
+
+    async function createQuestion() {
+      const title = document.getElementById("questionTitle").value.trim();
+      const description = document.getElementById("questionDescription").value.trim();
+
+      if (!title) {
+        setCreateStatus("Question title is required", true);
+        return;
+      }
+
+      try {
+        const payload = {
+          title,
+          description,
+          allow_anonymous: true,
+          require_email_verification: false,
+          enable_data_retention: false
+        };
+
+        const result = await apiFetch("/api/questions", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+
+        document.getElementById("questionId").value = result.id;
+        setCreateStatus(`Question created: ${result.id}`);
+      } catch (error) {
+        setCreateStatus(error.message, true);
+      }
+    }
+
+    async function assignRecipient() {
+      const questionId = document.getElementById("questionId").value.trim();
+      const adminId = document.getElementById("adminId").value.trim();
+      const deliveryMode = document.getElementById("deliveryMode").value;
+      const destinationUrl = document.getElementById("destinationUrl").value.trim();
+
+      if (!questionId || !adminId) {
+        setStatus("Question ID and admin ID are required", true);
+        return;
+      }
+
+      try {
+        await apiFetch(`/api/admin/questions/${questionId}/recipients`, {
+          method: "POST",
+          body: JSON.stringify({
+            admin_id: adminId,
+            delivery_mode: deliveryMode,
+            destination_url: destinationUrl || null
+          })
+        });
+
+        setStatus("Recipient assigned successfully");
+        loadRecipients();
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    async function loadRecipients() {
+      const questionId = document.getElementById("questionId").value.trim();
+      if (!questionId) {
+        setStatus("Please enter a question ID", true);
+        return;
+      }
+
+      try {
+        const recipients = await apiFetch(`/api/admin/questions/${questionId}/recipients`);
+        renderRecipients(recipients);
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    }
+
+    function renderRecipients(recipients) {
+      const tbody = document.getElementById("recipientTableBody");
+      tbody.innerHTML = "";
+
+      if (!recipients.length) {
+        tbody.innerHTML = `
+          <tr><td colspan="4">No recipients assigned yet</td></tr>
+        `;
+        return;
+      }
+
+      recipients.forEach((recipient) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${recipient.admin_id}</td>
+          <td>${recipient.delivery_mode || "summary"}</td>
+          <td>${recipient.destination_url || "-"}</td>
+          <td>
+            <button class="danger" data-admin-id="${recipient.admin_id}">Remove</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      tbody.querySelectorAll("button[data-admin-id]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const questionId = document.getElementById("questionId").value.trim();
+          const adminId = button.getAttribute("data-admin-id");
+          try {
+            await apiFetch(`/api/admin/questions/${questionId}/recipients/${adminId}`, {
+              method: "DELETE"
+            });
+            setStatus("Recipient removed");
+            loadRecipients();
+          } catch (error) {
+            setStatus(error.message, true);
+          }
+        });
+      });
+    }
+
+    document.getElementById("createQuestionBtn").addEventListener("click", createQuestion);
+    document.getElementById("assignRecipientBtn").addEventListener("click", assignRecipient);
+    document.getElementById("loadRecipientsBtn").addEventListener("click", loadRecipients);
+  </script>
+</body>
+</html>

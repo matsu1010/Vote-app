@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vote App Voter</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 32px;
+      background: #f4f6f8;
+      color: #1e2a39;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    }
+    .option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    input[type="radio"] {
+      width: auto;
+      margin: 0;
+    }
+    button {
+      width: 100%;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 8px;
+      background: #1c7cd6;
+      color: white;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    .status {
+      min-height: 24px;
+      margin-top: 12px;
+      color: #2d6a4f;
+    }
+    .status.error {
+      color: #a61818;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Vote</h1>
+
+    <label for="questionId">Question ID</label>
+    <input id="questionId" type="text" placeholder="Paste question UUID" />
+
+    <div class="option">
+      <input type="radio" id="yes" name="voteOption" value="Yes" />
+      <label for="yes">Yes</label>
+    </div>
+
+    <div class="option">
+      <input type="radio" id="no" name="voteOption" value="No" />
+      <label for="no">No</label>
+    </div>
+
+    <button id="saveVoteBtn">Save vote locally</button>
+    <button id="submitVoteBtn">Submit result summary to admin</button>
+
+    <div id="status" class="status"></div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "vote_app_local_votes_v1";
+
+    function getLocalVotes() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveLocalVote(questionId, answer) {
+      const votes = getLocalVotes();
+      const existingIndex = votes.findIndex(v => v.questionId === questionId);
+
+      const payload = {
+        questionId,
+        answer,
+        createdAt: new Date().toISOString()
+      };
+
+      if (existingIndex >= 0) {
+        votes[existingIndex] = payload;
+      } else {
+        votes.push(payload);
+      }
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(votes));
+      return payload;
+    }
+
+    function getLocalVote(questionId) {
+      return getLocalVotes().find(v => v.questionId === questionId) || null;
+    }
+
+    function clearLocalVotes() {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+
+    function setStatus(message, isError = false) {
+      const statusEl = document.getElementById("status");
+      statusEl.textContent = message;
+      statusEl.classList.toggle("error", isError);
+    }
+
+    function getSelectedVote() {
+      const radios = document.querySelectorAll('input[name="voteOption"]');
+      for (const radio of radios) {
+        if (radio.checked) {
+          return radio.value;
+        }
+      }
+      return null;
+    }
+
+    async function submitSummary(questionId, token) {
+      const localVote = getLocalVote(questionId);
+
+      if (!localVote) {
+        throw new Error("No local vote was saved for this question");
+      }
+
+      const response = await fetch(`/api/results/question/${questionId}/forward`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          question_id: questionId,
+          answer: localVote.answer,
+          source: "local-device"
+        })
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || "Submit failed");
+      }
+
+      return response.json();
+    }
+
+    document.getElementById("saveVoteBtn").addEventListener("click", () => {
+      const questionId = document.getElementById("questionId").value.trim();
+      const answer = getSelectedVote();
+
+      if (!questionId || !answer) {
+        setStatus("Please enter a question ID and select an option", true);
+        return;
+      }
+
+      saveLocalVote(questionId, answer);
+      setStatus("Vote saved locally on this device");
+    });
+
+    document.getElementById("submitVoteBtn").addEventListener("click", async () => {
+      const questionId = document.getElementById("questionId").value.trim();
+      const token = localStorage.getItem("vote_app_token");
+
+      if (!questionId) {
+        setStatus("Please enter a question ID", true);
+        return;
+      }
+
+      if (!token) {
+        setStatus("Please login first to get an admin token", true);
+        return;
+      }
+
+      try {
+        const result = await submitSummary(questionId, token);
+        setStatus("Result summary submitted to the selected admin");
+        clearLocalVotes();
+        console.log(result);
+      } catch (error) {
+        setStatus(error.message, true);
+      }
+    });
+  </script>
+</body>
+</html>

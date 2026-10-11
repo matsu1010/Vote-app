@@ -46,7 +46,6 @@ def build_question_summary(question_id: UUID, db: Session):
 
 @router.get("/{question_id}", response_model=QuestionResults)
 def get_question_results(question_id: UUID, db: Session = Depends(get_db)):
-    """Get voting results for a question."""
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
@@ -81,7 +80,6 @@ def get_question_result_recipients(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Return the result recipient list for a question."""
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
@@ -102,10 +100,6 @@ def forward_question_results(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Forward only the aggregate summary to selected admins.
-    This keeps customer vote data local and only sends the summary.
-    """
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
