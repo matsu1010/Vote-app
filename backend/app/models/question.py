@@ -2,6 +2,7 @@ from sqlalchemy import Column, String, Text, DateTime, Boolean, UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
+
 from app.database import Base
 
 
