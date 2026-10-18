@@ -13,6 +13,7 @@ class Question(Base):
     title = Column(String(500), nullable=False)
     description = Column(Text, nullable=True)
     status = Column(String(20), default="open")
+    free_access = Column(Boolean, default=False)
 
     require_email_verification = Column(Boolean, default=False)
     allow_anonymous = Column(Boolean, default=False)
@@ -28,3 +29,4 @@ class Question(Base):
 
     votes = relationship("Vote", back_populates="question", cascade="all, delete-orphan")
     admin_recipients = relationship("AdminRecipient", back_populates="question", cascade="all, delete-orphan")
+    invite_code_batches = relationship("InviteCodeBatch", back_populates="question", cascade="all, delete-orphan")
