@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, UUID, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, String, DateTime, Boolean, UUID, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -10,13 +10,17 @@ class Vote(Base):
     __tablename__ = "votes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    voter_id = Column(UUID(as_uuid=True), nullable=True, index=True)
     question_id = Column(UUID(as_uuid=True), ForeignKey("questions.id", ondelete="CASCADE"), nullable=False, index=True)
     answer = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    __table_args__ = (UniqueConstraint('user_id', 'question_id', name='uq_user_question_vote'),)
+    __table_args__ = (
+        UniqueConstraint('user_id', 'question_id', name='uq_user_question_vote'),
+        UniqueConstraint('voter_id', 'question_id', name='uq_voter_question_vote'),
+    )
 
     user = relationship("User", back_populates="votes")
     question = relationship("Question", back_populates="votes")
