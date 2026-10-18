@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -30,6 +30,19 @@ def create_access_token(user_id: str, expires_delta: Optional[timedelta] = None)
         expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
 
     to_encode = {"sub": str(user_id), "exp": expire}
+    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
+    return encoded_jwt
+
+
+def create_voter_token(voter_id: str, batch_id: Optional[str] = None, expires_delta: Optional[timedelta] = None) -> str:
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(hours=settings.voter_token_expire_hours)
+
+    to_encode = {"sub": str(voter_id), "scope": "voter", "exp": expire}
+    if batch_id is not None:
+        to_encode["batch_id"] = str(batch_id)
     encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
     return encoded_jwt
 
@@ -73,6 +86,27 @@ async def get_current_user(
         )
 
     return user
+
+
+async def get_current_voter(
+    credentials: HTTPAuthCredentials = Depends(security),
+    db: Session = Depends(get_db)
+) -> dict:
+    token = credentials.credentials
+    payload = decode_token(token)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid voter credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    if payload.get("scope") != "voter":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is not a voter token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return payload
 
 
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
