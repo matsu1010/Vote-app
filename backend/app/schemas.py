@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from uuid import UUID
 
@@ -36,6 +36,7 @@ class TokenResponse(BaseModel):
 class QuestionBase(BaseModel):
     title: str
     description: Optional[str] = None
+    free_access: bool = False
     require_email_verification: bool = False
     allow_anonymous: bool = False
     enable_data_retention: bool = True
@@ -49,6 +50,7 @@ class QuestionUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     status: Optional[str] = None
+    free_access: Optional[bool] = None
     require_email_verification: Optional[bool] = None
     allow_anonymous: Optional[bool] = None
     enable_data_retention: Optional[bool] = None
@@ -74,7 +76,8 @@ class VoteUpdate(BaseModel):
 
 class VoteResponse(BaseModel):
     id: UUID
-    user_id: UUID
+    user_id: Optional[UUID] = None
+    voter_id: Optional[UUID] = None
     question_id: UUID
     answer: str
     created_at: datetime
@@ -112,3 +115,49 @@ class QuestionResults(BaseModel):
     title: str
     total_votes: int
     results: list[VoteCount]
+
+
+class InviteCodeBatchCreate(BaseModel):
+    question_id: Optional[UUID] = None
+    count: int = 1
+    price_cents: Optional[int] = None
+    name: Optional[str] = None
+
+
+class InviteCodeBatchResponse(BaseModel):
+    id: UUID
+    question_id: Optional[UUID]
+    name: Optional[str]
+    price_cents: Optional[int]
+    created_by: Optional[UUID]
+    created_at: datetime
+    codes: List[str]
+
+    class Config:
+        from_attributes = True
+
+
+class RedeemCodeRequest(BaseModel):
+    code: str
+
+
+class RedeemCodeResponse(BaseModel):
+    voter_token: str
+    expires_at: datetime
+
+
+class ManualCodeSaleRequest(BaseModel):
+    codes: List[str]
+    note: Optional[str] = None
+
+
+class CheckoutSessionRequest(BaseModel):
+    batch_id: UUID
+    quantity: int = 1
+    success_url: Optional[str] = None
+    cancel_url: Optional[str] = None
+
+
+class CheckoutSessionResponse(BaseModel):
+    session_id: str
+    checkout_url: str
