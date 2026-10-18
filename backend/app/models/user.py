@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Boolean, UUID
+from sqlalchemy import Column, String, DateTime, Boolean, UUID, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
@@ -22,3 +22,4 @@ class User(Base):
     audit_logs = relationship("AuditLog", back_populates="user")
     admin_actions = relationship("AdminActionLog", back_populates="admin_user")
     result_access = relationship("AdminRecipient", back_populates="admin")
+    created_code_batches = relationship("InviteCodeBatch", back_populates="created_by_user")
