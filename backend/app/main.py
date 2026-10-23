@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base
-from app.routes import auth, questions, votes, results, admin, invite_codes, payments
+from app.routes import auth, questions, votes, results, admin, invite_codes
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -30,7 +30,6 @@ app.include_router(votes.router)
 app.include_router(results.router)
 app.include_router(admin.router)
 app.include_router(invite_codes.router)
-app.include_router(payments.router)
 
 @app.get("/")
 def read_root():
