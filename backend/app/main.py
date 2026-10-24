@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import engine, Base
-from app.routes import auth, questions, votes, results, admin, invite_codes, votoken
+from app.routes import auth, questions, votes, results, admin, invite_codes, votoken, payments
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -31,6 +31,7 @@ app.include_router(results.router)
 app.include_router(admin.router)
 app.include_router(invite_codes.router)
 app.include_router(votoken.router)
+app.include_router(payments.router)
 
 @app.get("/")
 def read_root():
@@ -43,7 +44,7 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    """Health check endpoint"""
+    """Health check endpoint"
     return {"status": "healthy"}
 
 if __name__ == "__main__":

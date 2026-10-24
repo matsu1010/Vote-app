@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -16,6 +16,7 @@ def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
         require_email_verification=question.require_email_verification,
         allow_anonymous=question.allow_anonymous,
         enable_data_retention=question.enable_data_retention,
+        public_results_enabled=question.public_results_enabled,
     )
     db.add(new_question)
     db.commit()

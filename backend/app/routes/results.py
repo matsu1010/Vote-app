@@ -9,7 +9,8 @@ from app.models.question import Question
 from app.models.vote import Vote
 from app.models.admin_recipient import AdminRecipient
 from app.models.user import User
-from app.schemas import QuestionResults, VoteCount
+from app.models.votoken import AnonymousWallet
+from app.schemas import QuestionResults, VoteCount, VoteChoiceDetail
 from app.security import get_current_user
 
 router = APIRouter(prefix="/api/results", tags=["results"])
@@ -19,6 +20,9 @@ def build_question_summary(question_id: UUID, db: Session):
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
+
+    if not question.public_results_enabled:
+        raise HTTPException(status_code=403, detail="Public results are disabled for this question")
 
     vote_counts = db.query(
         Vote.answer,
@@ -50,14 +54,17 @@ def get_question_results(question_id: UUID, db: Session = Depends(get_db)):
     if not question:
         raise HTTPException(status_code=404, detail="Question not found")
 
+    if not question.public_results_enabled:
+        raise HTTPException(status_code=403, detail="Public results are disabled for this question")
+
     vote_counts = db.query(
         Vote.answer,
         func.count(Vote.id).label("count")
     ).filter(Vote.question_id == question_id).group_by(Vote.answer).all()
 
     total_votes = sum(count for _, count in vote_counts)
-
     results = []
+
     for answer, count in vote_counts:
         percentage = (count / total_votes * 100) if total_votes > 0 else 0
         results.append(VoteCount(
@@ -72,6 +79,42 @@ def get_question_results(question_id: UUID, db: Session = Depends(get_db)):
         total_votes=total_votes,
         results=results
     )
+
+
+@router.get("/{question_id}/details", response_model=list[VoteChoiceDetail])
+def get_question_vote_details(
+    question_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    question = db.query(Question).filter(Question.id == question_id).first()
+    if not question:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    if not current_user.is_admin and not current_user.is_super_admin:
+        raise HTTPException(status_code=403, detail="Only admins can access individual vote details")
+
+    rows = db.query(Vote).filter(Vote.question_id == question_id).order_by(Vote.created_at.asc()).all()
+    details = []
+
+    for row in rows:
+        wallet_alias = None
+        if row.voter_id is not None:
+            wallet = db.query(AnonymousWallet).filter(AnonymousWallet.id == row.voter_id).first()
+            if wallet is not None:
+                wallet_alias = wallet.alias
+
+        details.append(VoteChoiceDetail(
+            vote_id=row.id,
+            question_id=row.question_id,
+            answer=row.answer,
+            wallet_id=row.voter_id,
+            wallet_alias=wallet_alias,
+            user_id=row.user_id,
+            created_at=row.created_at,
+        ))
+
+    return details
 
 
 @router.get("/question/{question_id}/recipients")

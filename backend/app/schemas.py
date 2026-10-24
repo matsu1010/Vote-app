@@ -40,6 +40,7 @@ class QuestionBase(BaseModel):
     require_email_verification: bool = False
     allow_anonymous: bool = False
     enable_data_retention: bool = True
+    public_results_enabled: bool = True
 
 
 class QuestionCreate(QuestionBase):
@@ -54,6 +55,7 @@ class QuestionUpdate(BaseModel):
     require_email_verification: Optional[bool] = None
     allow_anonymous: Optional[bool] = None
     enable_data_retention: Optional[bool] = None
+    public_results_enabled: Optional[bool] = None
 
 
 class QuestionResponse(QuestionBase):
@@ -115,6 +117,16 @@ class QuestionResults(BaseModel):
     title: str
     total_votes: int
     results: list[VoteCount]
+
+
+class VoteChoiceDetail(BaseModel):
+    vote_id: UUID
+    question_id: UUID
+    answer: str
+    wallet_id: Optional[UUID] = None
+    wallet_alias: Optional[str] = None
+    user_id: Optional[UUID] = None
+    created_at: datetime
 
 
 class InviteCodeBatchCreate(BaseModel):
