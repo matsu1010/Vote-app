@@ -1,163 +1,52 @@
-from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime
-from uuid import UUID
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
+from app.database import engine, Base
+from app.routes import auth, questions, votes, results, admin, invite_codes, votoken
 
-class UserBase(BaseModel):
-    username: str
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
+# Initialize FastAPI app
+app = FastAPI(
+    title="Vote App API",
+    description="A simple voting application API",
+    version="1.0.0"
+)
 
-class UserCreate(UserBase):
-    password: str
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+# Include routes
+app.include_router(auth.router)
+app.include_router(questions.router)
+app.include_router(votes.router)
+app.include_router(results.router)
+app.include_router(admin.router)
+app.include_router(invite_codes.router)
+app.include_router(votoken.router)
 
-class UserLogin(BaseModel):
-    username: str
-    password: str
+@app.get("/")
+def read_root():
+    """Root endpoint"""
+    return {
+        "message": "Welcome to Vote App API",
+        "docs": "/docs",
+        "version": "1.0.0"
+    }
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy"}
 
-class UserResponse(UserBase):
-    id: UUID
-    is_admin: bool
-    is_super_admin: bool
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: UserResponse
-
-
-class QuestionBase(BaseModel):
-    title: str
-    description: Optional[str] = None
-    free_access: bool = False
-    require_email_verification: bool = False
-    allow_anonymous: bool = False
-    enable_data_retention: bool = True
-
-
-class QuestionCreate(QuestionBase):
-    pass
-
-
-class QuestionUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    status: Optional[str] = None
-    free_access: Optional[bool] = None
-    require_email_verification: Optional[bool] = None
-    allow_anonymous: Optional[bool] = None
-    enable_data_retention: Optional[bool] = None
-
-
-class QuestionResponse(QuestionBase):
-    id: UUID
-    status: str
-    created_at: datetime
-    closed_at: Optional[datetime]
-
-    class Config:
-        from_attributes = True
-
-
-class VoteCreate(BaseModel):
-    answer: str
-
-
-class VoteUpdate(BaseModel):
-    answer: str
-
-
-class VoteResponse(BaseModel):
-    id: UUID
-    user_id: Optional[UUID] = None
-    voter_id: Optional[UUID] = None
-    question_id: UUID
-    answer: str
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class AdminRecipientCreate(BaseModel):
-    admin_id: UUID
-    delivery_mode: str = "summary"
-    destination_url: Optional[str] = None
-
-
-class AdminRecipientResponse(BaseModel):
-    id: UUID
-    question_id: UUID
-    admin_id: UUID
-    delivery_mode: str
-    destination_url: Optional[str]
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class VoteCount(BaseModel):
-    answer: str
-    count: int
-    percentage: float
-
-
-class QuestionResults(BaseModel):
-    question_id: UUID
-    title: str
-    total_votes: int
-    results: list[VoteCount]
-
-
-class InviteCodeBatchCreate(BaseModel):
-    question_id: Optional[UUID] = None
-    count: int = 1
-    price_cents: Optional[int] = None
-    name: Optional[str] = None
-
-
-class InviteCodeBatchResponse(BaseModel):
-    id: UUID
-    question_id: Optional[UUID]
-    name: Optional[str]
-    price_cents: Optional[int]
-    created_by: Optional[UUID]
-    created_at: datetime
-    codes: List[str]
-
-    class Config:
-        from_attributes = True
-
-
-class RedeemCodeRequest(BaseModel):
-    code: str
-
-
-class RedeemCodeResponse(BaseModel):
-    voter_token: str
-    expires_at: datetime
-
-
-class ManualCodeSaleRequest(BaseModel):
-    codes: List[str]
-    note: Optional[str] = None
-
-
-class CheckoutSessionRequest(BaseModel):
-    batch_id: UUID
-    quantity: int = 1
-    success_url: Optional[str] = None
-    cancel_url: Optional[str] = None
-
-
-class CheckoutSessionResponse(BaseModel):
-    session_id: str
-    checkout_url: str
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host=settings.server_host, port=settings.server_port)
