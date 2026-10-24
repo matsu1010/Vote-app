@@ -116,46 +116,77 @@ def get_question_vote_details(
     return details
 
 
-@router.get("/admin/chains")
-def get_admin_vote_chains(
+@router.get("/admin/report")
+def get_admin_report(
     question_ids: list[UUID] = Query(...),
+    wallet_id: UUID | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     if not current_user.is_admin and not current_user.is_super_admin:
-        raise HTTPException(status_code=403, detail="Only admins can access vote-chain data")
+        raise HTTPException(status_code=403, detail="Only admins can access the full report")
 
-    ordered_question_ids = sorted(question_ids, key=lambda qid: str(qid))
-    per_question_counts = {}
+    public_summary = {}
+    full_counts = {}
+    wallet_records = {}
     wallet_to_chain = defaultdict(list)
-    wallet_aliases = {}
 
-    for question_id in ordered_question_ids:
+    for question_id in question_ids:
         question = db.query(Question).filter(Question.id == question_id).first()
         if question is None:
             continue
 
         vote_rows = db.query(Vote).filter(Vote.question_id == question_id).all()
-        by_answer = defaultdict(int)
+        answer_counts = defaultdict(int)
         for vote in vote_rows:
-            by_answer[vote.answer] += 1
-        per_question_counts[str(question_id)] = dict(sorted(by_answer.items()))
+            answer_counts[vote.answer] += 1
+
+        total_votes = sum(answer_counts.values())
+        public_summary[str(question_id)] = {
+            "question_title": question.title,
+            "public_percentage": {
+                answer: round((count / total_votes * 100) if total_votes > 0 else 0, 2)
+                for answer, count in sorted(answer_counts.items())
+            },
+            "public_status": question.public_results_enabled,
+        }
+
+        full_counts[str(question_id)] = {
+            "question_title": question.title,
+            "total_votes": total_votes,
+            "answers": {answer: count for answer, count in sorted(answer_counts.items())},
+        }
 
         for vote in vote_rows:
-            wallet_id = vote.voter_id or vote.user_id
-            if wallet_id is None:
+            wallet_key = str(vote.voter_id or vote.user_id)
+            if wallet_key == "None":
                 continue
-            wallet_to_chain[str(wallet_id)].append(vote.answer)
-            if str(wallet_id) not in wallet_aliases:
-                wallet = db.query(AnonymousWallet).filter(AnonymousWallet.id == wallet_id).first()
-                wallet_aliases[str(wallet_id)] = wallet.alias if wallet else str(wallet_id)
+
+            wallet_alias = None
+            if vote.voter_id is not None:
+                wallet = db.query(AnonymousWallet).filter(AnonymousWallet.id == vote.voter_id).first()
+                if wallet is not None:
+                    wallet_alias = wallet.alias
+
+            wallet_records.setdefault(wallet_key, {
+                "wallet_id": wallet_key,
+                "wallet_alias": wallet_alias,
+                "votes": [],
+            })
+            wallet_records[wallet_key]["votes"].append({
+                "question_id": str(question_id),
+                "question_title": question.title,
+                "answer": vote.answer,
+                "created_at": vote.created_at.isoformat(),
+            })
+            wallet_to_chain[wallet_key].append(vote.answer)
 
     chain_counts = defaultdict(int)
     chain_wallets = defaultdict(list)
-    for wallet_id, answers in wallet_to_chain.items():
-        chain_key = tuple(answers)
-        chain_counts[chain_key] += 1
-        chain_wallets[chain_key].append(wallet_aliases.get(wallet_id, wallet_id))
+    for wallet_key, answers in wallet_to_chain.items():
+        chain = tuple(answers)
+        chain_counts[chain] += 1
+        chain_wallets[chain].append(wallet_records.get(wallet_key, {}).get("wallet_alias") or wallet_key)
 
     chains = [
         {
@@ -167,11 +198,27 @@ def get_admin_vote_chains(
         for wallets in [chain_wallets[chain_key]]
     ]
 
+    other_chain_count = 0
+    if chains:
+        top_chain_wallet_count = max(item["wallet_count"] for item in chains)
+        other_chain_count = sum(item["wallet_count"] for item in chains if item["wallet_count"] < top_chain_wallet_count)
+    if not chains:
+        other_chain_count = 0
+
+    wallet_filter = None
+    if wallet_id is not None:
+        wallet_filter = wallet_records.get(str(wallet_id))
+
     return {
-        "question_ids": [str(qid) for qid in ordered_question_ids],
-        "per_question_counts": per_question_counts,
+        "report_id": f"report-{len(question_ids)}-{len(wallet_records)}",
+        "generated_at": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+        "question_ids": [str(question_id) for question_id in question_ids],
+        "public_summary": public_summary,
+        "full_counts": full_counts,
+        "wallets": sorted(wallet_records.values(), key=lambda item: item["wallet_id"]),
         "chains": chains,
-        "other_chain_count": 0,
+        "other_chain_count": other_chain_count,
+        "wallet_lookup": wallet_filter,
     }
 
 
