@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     # Server
     server_host: str = os.getenv("SERVER_HOST", "0.0.0.0")
     server_port: int = int(os.getenv("SERVER_PORT", "8000"))
+    frontend_url: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
     # CORS
     cors_origins: List[str] = [
