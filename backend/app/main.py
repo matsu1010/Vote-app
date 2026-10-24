@@ -1,119 +1,51 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from uuid import UUID
-from datetime import datetime, timedelta
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.config import settings
+from app.database import engine, Base
+from app.routes import auth, questions, votes, results, admin, invite_codes, votoken
 
-from app.database import get_db
-from app.models.user import User
-from app.models.votoken import AnonymousWallet, PackagePurchase, VotokenPackage
-from app.schemas import (
-    VotokenPackageCreate,
-    VotokenPackageResponse,
-    VotokenPurchaseRequest,
-    VotokenPurchaseResponse,
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="Vote App API",
+    description="A simple voting application API",
+    version="1.0.0"
 )
-from app.security import create_voter_token, get_admin_user
 
-router = APIRouter(prefix="/api/votoken", tags=["votoken"])
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+# Include routes
+app.include_router(auth.router)
+app.include_router(questions.router)
+app.include_router(votes.router)
+app.include_router(results.router)
+app.include_router(admin.router)
+app.include_router(invite_codes.router)
+app.include_router(votoken.router)
 
-@router.get("/packages", response_model=list[VotokenPackageResponse])
-def list_votoken_packages(db: Session = Depends(get_db)):
-    packages = (
-        db.query(VotokenPackage)
-        .filter(VotokenPackage.enabled.is_(True))
-        .order_by(VotokenPackage.vote_count.asc())
-        .all()
-    )
-    return packages
-
-
-@router.post("/packages", response_model=VotokenPackageResponse)
-def create_votoken_package(
-    payload: VotokenPackageCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user),
-):
-    if payload.vote_count <= 0:
-        raise HTTPException(status_code=400, detail="vote_count must be greater than zero")
-    if payload.price_cents < 0:
-        raise HTTPException(status_code=400, detail="price_cents must be zero or greater")
-
-    package = VotokenPackage(
-        name=payload.name,
-        vote_count=payload.vote_count,
-        price_cents=payload.price_cents,
-        currency=payload.currency,
-        enabled=payload.enabled,
-        expires_in_days=payload.expires_in_days,
-    )
-    db.add(package)
-    db.commit()
-    db.refresh(package)
-    return package
-
-
-@router.post("/purchase", response_model=VotokenPurchaseResponse)
-def purchase_votoken_package(
-    payload: VotokenPurchaseRequest,
-    db: Session = Depends(get_db),
-):
-    package = (
-        db.query(VotokenPackage)
-        .filter(VotokenPackage.id == payload.package_id, VotokenPackage.enabled.is_(True))
-        .first()
-    )
-    if package is None:
-        raise HTTPException(status_code=404, detail="Votoken package not found or disabled")
-
-    wallet = AnonymousWallet(
-        alias=f"wallet-{package.vote_count}-{__import__('uuid').uuid4().hex[:8]}",
-        remaining_votokens=package.vote_count,
-        total_purchased=package.vote_count,
-    )
-    if package.expires_in_days is not None:
-        wallet.expires_at = datetime.utcnow() + timedelta(days=package.expires_in_days)
-
-    purchase = PackagePurchase(
-        wallet=wallet,
-        package=package,
-        status="paid",
-        amount_cents=package.price_cents,
-        currency=package.currency,
-        expires_at=wallet.expires_at,
-    )
-    db.add(wallet)
-    db.add(purchase)
-    db.commit()
-    db.refresh(wallet)
-    db.refresh(purchase)
-
-    expires_delta = timedelta(days=package.expires_in_days) if package.expires_in_days is not None else None
-    wallet_token = create_voter_token(str(wallet.id), expires_delta=expires_delta)
-
-    return VotokenPurchaseResponse(
-        wallet_id=wallet.id,
-        alias=wallet.alias,
-        package_id=package.id,
-        package_name=package.name,
-        vote_count=package.vote_count,
-        remaining_votokens=wallet.remaining_votokens,
-        expires_at=wallet.expires_at,
-        token=wallet_token,
-    )
-
-
-@router.get("/wallets/{wallet_id}", response_model=dict)
-def get_wallet_balance(wallet_id: UUID, db: Session = Depends(get_db)):
-    wallet = db.query(AnonymousWallet).filter(AnonymousWallet.id == wallet_id).first()
-    if wallet is None:
-        raise HTTPException(status_code=404, detail="Wallet not found")
-
+@app.get("/")
+def read_root():
+    """Root endpoint"""
     return {
-        "wallet_id": str(wallet.id),
-        "alias": wallet.alias,
-        "remaining_votokens": wallet.remaining_votokens,
-        "total_purchased": wallet.total_purchased,
-        "expires_at": wallet.expires_at,
-        "is_active": wallet.is_active,
+        "message": "Welcome to Vote App API",
+        "docs": "/docs",
+        "version": "1.0.0"
     }
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint"
+    return {"status": "healthy"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host=settings.server_host, port=settings.server_port)
