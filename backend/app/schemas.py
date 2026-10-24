@@ -112,11 +112,22 @@ class VoteCount(BaseModel):
     percentage: float
 
 
+class PublicVoteCount(BaseModel):
+    answer: str
+    percentage: float
+
+
 class QuestionResults(BaseModel):
     question_id: UUID
     title: str
     total_votes: int
     results: list[VoteCount]
+
+
+class PublicQuestionResults(BaseModel):
+    question_id: UUID
+    title: str
+    results: list[PublicVoteCount]
 
 
 class VoteChoiceDetail(BaseModel):

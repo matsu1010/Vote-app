@@ -18,6 +18,7 @@ class Question(Base):
     require_email_verification = Column(Boolean, default=False)
     allow_anonymous = Column(Boolean, default=False)
     enable_data_retention = Column(Boolean, default=True)
+    public_results_enabled = Column(Boolean, default=True)
 
     close_type = Column(String(50))
     scheduled_close_time = Column(DateTime, nullable=True)

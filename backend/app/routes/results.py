@@ -1,5 +1,6 @@
 import requests
-from fastapi import APIRouter, Depends, HTTPException
+from collections import defaultdict
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from uuid import UUID
@@ -10,7 +11,7 @@ from app.models.vote import Vote
 from app.models.admin_recipient import AdminRecipient
 from app.models.user import User
 from app.models.votoken import AnonymousWallet
-from app.schemas import QuestionResults, VoteCount, VoteChoiceDetail
+from app.schemas import QuestionResults, VoteCount, VoteChoiceDetail, PublicQuestionResults, PublicVoteCount
 from app.security import get_current_user
 
 router = APIRouter(prefix="/api/results", tags=["results"])
@@ -48,7 +49,7 @@ def build_question_summary(question_id: UUID, db: Session):
     }
 
 
-@router.get("/{question_id}", response_model=QuestionResults)
+@router.get("/{question_id}", response_model=PublicQuestionResults)
 def get_question_results(question_id: UUID, db: Session = Depends(get_db)):
     question = db.query(Question).filter(Question.id == question_id).first()
     if not question:
@@ -67,16 +68,14 @@ def get_question_results(question_id: UUID, db: Session = Depends(get_db)):
 
     for answer, count in vote_counts:
         percentage = (count / total_votes * 100) if total_votes > 0 else 0
-        results.append(VoteCount(
+        results.append(PublicVoteCount(
             answer=answer,
-            count=count,
             percentage=round(percentage, 2)
         ))
 
-    return QuestionResults(
+    return PublicQuestionResults(
         question_id=question_id,
         title=question.title,
-        total_votes=total_votes,
         results=results
     )
 
@@ -115,6 +114,65 @@ def get_question_vote_details(
         ))
 
     return details
+
+
+@router.get("/admin/chains")
+def get_admin_vote_chains(
+    question_ids: list[UUID] = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.is_admin and not current_user.is_super_admin:
+        raise HTTPException(status_code=403, detail="Only admins can access vote-chain data")
+
+    ordered_question_ids = sorted(question_ids, key=lambda qid: str(qid))
+    per_question_counts = {}
+    wallet_to_chain = defaultdict(list)
+    wallet_aliases = {}
+
+    for question_id in ordered_question_ids:
+        question = db.query(Question).filter(Question.id == question_id).first()
+        if question is None:
+            continue
+
+        vote_rows = db.query(Vote).filter(Vote.question_id == question_id).all()
+        by_answer = defaultdict(int)
+        for vote in vote_rows:
+            by_answer[vote.answer] += 1
+        per_question_counts[str(question_id)] = dict(sorted(by_answer.items()))
+
+        for vote in vote_rows:
+            wallet_id = vote.voter_id or vote.user_id
+            if wallet_id is None:
+                continue
+            wallet_to_chain[str(wallet_id)].append(vote.answer)
+            if str(wallet_id) not in wallet_aliases:
+                wallet = db.query(AnonymousWallet).filter(AnonymousWallet.id == wallet_id).first()
+                wallet_aliases[str(wallet_id)] = wallet.alias if wallet else str(wallet_id)
+
+    chain_counts = defaultdict(int)
+    chain_wallets = defaultdict(list)
+    for wallet_id, answers in wallet_to_chain.items():
+        chain_key = tuple(answers)
+        chain_counts[chain_key] += 1
+        chain_wallets[chain_key].append(wallet_aliases.get(wallet_id, wallet_id))
+
+    chains = [
+        {
+            "chain": list(chain_key),
+            "wallet_count": count,
+            "wallet_aliases": sorted(wallets),
+        }
+        for chain_key, count in sorted(chain_counts.items(), key=lambda item: (-item[1], item[0]))
+        for wallets in [chain_wallets[chain_key]]
+    ]
+
+    return {
+        "question_ids": [str(qid) for qid in ordered_question_ids],
+        "per_question_counts": per_question_counts,
+        "chains": chains,
+        "other_chain_count": 0,
+    }
 
 
 @router.get("/question/{question_id}/recipients")
