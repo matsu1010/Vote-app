@@ -172,6 +172,15 @@ class VotokenPackageCreate(BaseModel):
     expires_in_days: Optional[int] = None
 
 
+class VotokenPackageUpdate(BaseModel):
+    name: Optional[str] = None
+    vote_count: Optional[int] = None
+    price_cents: Optional[int] = None
+    currency: Optional[str] = None
+    enabled: Optional[bool] = None
+    expires_in_days: Optional[int] = None
+
+
 class VotokenPackageResponse(BaseModel):
     id: UUID
     name: str
